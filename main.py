@@ -1,0 +1,99 @@
+import os.path
+import time
+import base64
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+#from helper_functions import response
+
+# Use modify scope to allow marking as read without full account deletion powers
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+
+def get_full_body(payload):
+    """Recursively finds and decodes the plain text body from the payload."""
+    body = ""
+    parts = payload.get('parts')
+    if parts:
+        for part in parts:
+            mimeType = part.get('mimeType')
+            if mimeType == 'text/plain':
+                data = part.get('body', {}).get('data', '')
+                body += base64.urlsafe_b64decode(data).decode('utf-8')
+            elif part.get('parts'):
+                body += get_full_body(part)
+    else:
+        data = payload.get('body', {}).get('data', '')
+        if data:
+            body = base64.urlsafe_b64decode(data).decode('utf-8')
+    return body
+
+def get_unread_emails():
+    creds = None
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    
+    if not creds:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    try:
+        service = build('gmail', 'v1', credentials=creds)
+
+        # Fetch list of message IDs that are unread
+        results = service.users().messages().list(userId='me', q='is:unread').execute()
+        messages = results.get('messages', [])
+
+        if not messages:
+            print('No unread messages found.')
+            return
+
+        print(f'Found {len(messages)} unread messages:')
+
+        for message in messages:
+            # Get full details for each specific message
+            msg = service.users().messages().get(userId='me', id=message['id']).execute()
+            
+            # --- Extract Subject ---
+            headers = msg.get('payload', {}).get('headers', [])
+            subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'No Subject')
+            
+            # --- Extract Body (PAYLOAD PART) ---
+            # Replaced snippet logic with full payload decoding
+            body = get_full_body(msg.get('payload', {}))
+
+            print(f"\n--- NEW TICKET ---")
+            print(f"Subject: {subject}")
+            print(f"Body: {body}")
+
+            #response(subject, body)
+
+            # --- Mark Email as read ---
+            # service.users().messages().modify(
+            #     userId='me', 
+            #     id=message['id'], 
+            #     body={'removeLabelIds': ['UNREAD']}
+            # ).execute()
+            # print(f"Status: Marked as Read")
+
+    except Exception as error:
+        print(f'An error occurred: {error}')
+
+def main_loop():
+    print("Ticketing service started. Press Ctrl+C to stop.")
+    while True:
+        try:
+            get_unread_emails()
+        except Exception as e:
+            print(f"Error during check: {e}")
+        
+        print("Waiting 60 seconds for next check...")
+        time.sleep(60)
+
+if __name__ == '__main__':
+    main_loop()
