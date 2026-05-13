@@ -5,7 +5,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-#from helper_functions import response
+from processing import guardRail
+
 
 # Use modify scope to allow marking as read without full account deletion powers
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
@@ -67,11 +68,12 @@ def get_unread_emails():
             # Replaced snippet logic with full payload decoding
             body = get_full_body(msg.get('payload', {}))
 
-            print(f"\n--- NEW TICKET ---")
-            print(f"Subject: {subject}")
-            print(f"Body: {body}")
-
-            #response(subject, body)
+            #print(f"\n--- NEW TICKET ---")
+            #print(f"Subject: {subject}")
+            #print(f"Body: {body}")
+            
+            guardRail(subject, body)
+            
 
             # --- Mark Email as read ---
             # service.users().messages().modify(
