@@ -1,0 +1,24 @@
+{
+    "guardrails": [
+        {
+            "name": "PII_Redaction",
+            "description": "Detects and masks personally identifiable information like phone numbers and emails.",
+            "callback_action": "redact_sensitive_info"
+        },
+        {
+            "name": "Profanity_Filter",
+            "description": "Checks for offensive language in the email body.",
+            "callback_action": "flag_for_review"
+        },
+        {
+            "name": "Urgency_Detector",
+            "description": "Identifies keywords indicating high priority (e.g., 'ASAP', 'Urgent').",
+            "callback_action": "escalate_ticket"
+        },
+        {
+            "name": "Competitor_Mention",
+            "description": "Checks if the customer is mentioning a competitor product.",
+            "callback_action": "notify_sales_team"
+        }
+    ]
+}

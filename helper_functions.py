@@ -1,16 +1,24 @@
-from google import genai
 import os
 from dotenv import load_dotenv
+from groq import Groq
 
 load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
+API_KEY = os.getenv("GROQ_API_KEY")
 
-client = genai.Client(API_KEY)
-
-response = client.models.generate_content(
-    model="gemini-1.5-flash", contents="Explain how AI works in a few words"
+client = Groq(
+    api_key=os.environ.get(API_KEY),
 )
-print(response.text)
 
-# def response(subject, body):
-#     #print("in helper_fn")
+def response(subject, body):
+    refine = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f"{subject}-Subject\n {body}-Body\nThe above is the Subject and the Body of an Email summarize it and give a short Subject and Body for the Email.",
+            }
+        ],
+        model="llama-3.3-70b-versatile",
+    )
+
+    print(refine.choices[0].message.content)
+    return
