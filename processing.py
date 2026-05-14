@@ -29,16 +29,18 @@ def guardRail(subject, body, config_path='guardrail.json'):
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    processed_text = subject + " " + body
+    processed_subject = subject
+    processed_body = body
 
     for guardrail in config['guardrails']:
         action_name = guardrail['callback_action']
         
         if action_name in CALLBACK_MAP:
             callback_func = CALLBACK_MAP[action_name]
-            processed_text = callback_func(processed_text)
+            processed_subject = callback_func(processed_subject)
+            processed_body = callback_func(processed_body)
     #print(processed_text)
-    response(processed_text)
+    response(processed_subject, processed_body)
 
 
 

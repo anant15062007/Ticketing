@@ -75,13 +75,13 @@ def get_unread_emails():
             guardRail(subject, body)
             
 
-            # --- Mark Email as read ---
-            # service.users().messages().modify(
-            #     userId='me', 
-            #     id=message['id'], 
-            #     body={'removeLabelIds': ['UNREAD']}
-            # ).execute()
-            # print(f"Status: Marked as Read")
+            #--- Mark Email as read ---
+            service.users().messages().modify(
+                userId='me', 
+                id=message['id'], 
+                body={'removeLabelIds': ['UNREAD']}
+            ).execute()
+            #print(f"Status: Marked as Read")
 
     except Exception as error:
         print(f'An error occurred: {error}')
