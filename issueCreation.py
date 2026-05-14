@@ -6,8 +6,8 @@ load_dotenv()
 API_KEY = os.getenv("GITHUB_TOKEN_KEY")
 
 GITHUB_TOKEN = API_KEY
-REPO_OWNER = "anant15062007"
-REPO_NAME = "Tickets"
+#REPO_OWNER = "anant15062007"
+#REPO_NAME = "Tickets"
 
 def create_github_issue(short_subject, short_body):
     url = f"https://api.github.com/repos/anant15062007/Tickets/issues"
