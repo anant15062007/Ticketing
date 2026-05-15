@@ -1,6 +1,8 @@
 import os.path
+import os
 import time
 import base64
+import json
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -46,7 +48,6 @@ def get_unread_emails():
     try:
         service = build('gmail', 'v1', credentials=creds)
 
-        # Fetch list of message IDs that are unread
         results = service.users().messages().list(userId='me', q='is:unread').execute()
         messages = results.get('messages', [])
 
@@ -56,32 +57,33 @@ def get_unread_emails():
 
         print(f'Found {len(messages)} unread messages:')
 
+        processed_threads = set()
+
         for message in messages:
-            # Get full details for each specific message
+            thread_id = message["threadId"]
+            print("Therad ID:- ", thread_id)
+
+            if thread_id in processed_threads:
+                continue
+
             msg = service.users().messages().get(userId='me', id=message['id']).execute()
-            
-            # --- Extract Subject ---
             headers = msg.get('payload', {}).get('headers', [])
             subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'No Subject')
-            
-            # --- Extract Body (PAYLOAD PART) ---
-            # Replaced snippet logic with full payload decoding
             body = get_full_body(msg.get('payload', {}))
+            print(body)
 
-            #print(f"\n--- NEW TICKET ---")
-            #print(f"Subject: {subject}")
-            #print(f"Body: {body}")
+            is_reply = any(h['name'].lower() == 'in-reply-to' for h in headers)
             
-            guardRail(subject, body)
-            
+            guardRail(subject, body, is_reply, thread_id)
 
-            #--- Mark Email as read ---
+            
+            processed_threads.add(thread_id)
+            
             service.users().messages().modify(
                 userId='me', 
                 id=message['id'], 
                 body={'removeLabelIds': ['UNREAD']}
             ).execute()
-            #print(f"Status: Marked as Read")
 
     except Exception as error:
         print(f'An error occurred: {error}')

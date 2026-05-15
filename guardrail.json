@@ -9,6 +9,11 @@
             "name": "PhoneNo",
             "description": "Checks for any phone number",
             "callback_action": "phone_check"
+        },
+        {
+            "name": "OTP",
+            "description": "Checks for OTP",
+            "callback_action": "otp_check"
         }
     ]
 }

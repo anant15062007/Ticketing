@@ -13,7 +13,7 @@ client = Groq(
     api_key=os.environ.get(API_KEY),
 )
 
-def response(subject, body):
+def response(subject, body, is_reply, thread_id):
     prompt = f"""Act as an efficient office assistant. Your task is to summarize incoming emails into a concise ticketing format.
 
 ### INSTRUCTIONS:
@@ -52,7 +52,8 @@ Use the following format:
     ticket_json = json.loads(raw_response)
     final_subject = ticket_json["short_subject"]
     final_body = ticket_json["short_body"]
-    create_github_issue(final_subject, final_body)
+    print(final_body)
+    create_github_issue(final_subject, final_body, is_reply, thread_id)
     return
 
 

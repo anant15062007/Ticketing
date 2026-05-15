@@ -1,30 +1,14 @@
 import re
 import json
 from helper_functions import response
+import sys
+import preprocessing_callback
 
-def guardRail(subject, body, config_path='guardrail.json'):
+is_reply = False
+current_module = sys.modules["preprocessing_callback"]
 
-    email_found = False
-    phone_found = False
 
-    def email_check(text):
-        #print("In email check")
-        email_found = bool(re.search(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b', text))
-        if email_found:
-            text = re.sub(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b', "[Contained Email address]", text)
-        return text
-
-    def phone_check(text):
-        #print("In phone check")
-        phone_found = bool(re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text))
-        if phone_found:
-            text = re.sub(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', "[Contained Phone Number]", text)
-        return text
-
-    CALLBACK_MAP = {
-    "email_check": email_check,
-    "phone_check": phone_check
-    }
+def guardRail(subject, body, is_reply, thread_id, config_path='guardrail.json'):
 
     with open(config_path, 'r') as f:
         config = json.load(f)
@@ -34,13 +18,15 @@ def guardRail(subject, body, config_path='guardrail.json'):
 
     for guardrail in config['guardrails']:
         action_name = guardrail['callback_action']
-        
-        if action_name in CALLBACK_MAP:
-            callback_func = CALLBACK_MAP[action_name]
-            processed_subject = callback_func(processed_subject)
-            processed_body = callback_func(processed_body)
+        callback = getattr(current_module, action_name)
+        processed_subject = callback(processed_subject)
+        processed_body = callback(processed_body)
+        print(processed_body)
     #print(processed_text)
-    response(processed_subject, processed_body)
+
+    ### Check if the mail is a reply
+
+    response(processed_subject, processed_body, is_reply, thread_id)
 
 
 
