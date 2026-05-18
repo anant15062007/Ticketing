@@ -3,8 +3,6 @@ import json
 from dotenv import load_dotenv
 from groq import Groq
 from issueCreation import create_github_issue
-#import instructor
-#from pydantic import BaseModel, Field, field_validator
 
 load_dotenv()
 API_KEY = os.getenv("GROQ_API_KEY")
@@ -13,7 +11,7 @@ client = Groq(
     api_key=os.environ.get(API_KEY),
 )
 
-def response(subject, body, is_reply, thread_id):
+def response(subject, body, is_reply, thread_id, message_id):
     prompt = f"""Act as an efficient office assistant. Your task is to summarize incoming emails into a concise ticketing format.
 
 ### INSTRUCTIONS:
@@ -52,8 +50,8 @@ Use the following format:
     ticket_json = json.loads(raw_response)
     final_subject = ticket_json["short_subject"]
     final_body = ticket_json["short_body"]
-    #print(final_body)
-    create_github_issue(final_subject, final_body, is_reply, thread_id)
+    print(final_body)
+    create_github_issue(final_subject, final_body, is_reply, thread_id, message_id)
     return
 
 

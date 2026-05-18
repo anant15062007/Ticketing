@@ -12,7 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from processing import guardRail
 from email.message import EmailMessage
-from actions import get_issue_from_db
+from actions import get_issue_from_db, find_threadID, find_messageID
 
 
 # Use modify scope to allow marking as read without full account deletion powers
@@ -72,13 +72,12 @@ def get_unread_emails():
                     body={'removeLabelIds': ['UNREAD']}
                 ).execute()
 
-        
-
 
         for message in messages:
             thread_id = message["threadId"]
-            if get_issue_from_db(thread_id)==None:
-                #print("Therad ID:- ", thread_id)
+            message_id = message['id']
+            if find_threadID(thread_id)==False:
+                print("Therad ID:- ", thread_id)
                 #print(message)
 
                 if thread_id in processed_threads:
@@ -88,19 +87,17 @@ def get_unread_emails():
                 headers = msg.get('payload', {}).get('headers', [])
                 subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'No Subject')
                 body = get_full_body(msg.get('payload', {}))
-                #print(body)
+                print(body)
 
                 is_reply = any(h['name'].lower() == 'in-reply-to' for h in headers)
                 
-                guardRail(subject, body, is_reply, thread_id)
+                guardRail(subject, body, is_reply, thread_id, message['id'])
 
                 processed_threads.add(thread_id)
 
                 markAsRead(message['id'])
 
-                                
 
-                
                 def sendMail():
                     #print("Sending Mail")
                     try:
@@ -112,8 +109,11 @@ def get_unread_emails():
                             email = re.findall(r'<([^>]+)>', sender_header)
                             sender_email = email[0] if email else sender_header
 
-                        message.set_content(f"""This is automated draft mail
+                        if issueNo!=None:
+                            message.set_content(f"""This is automated draft mail
 Your ticket has been created at https://github.com/anant15062007/Tickets/issues/{issueNo}""")
+                        else:
+                            message.set_content("An Error Occurred")
 
                         message["To"] = sender_email
                         message["From"] = "jainanant469@gmail.com"
@@ -136,14 +136,14 @@ Your ticket has been created at https://github.com/anant15062007/Tickets/issues/
                         send_message = None
                     return send_message
 
-
                 sendMail()
 
+            elif find_threadID(thread_id)==True and find_messageID(message_id)==False:
+                print("It is a reply")
 
-
-            else:
+            elif find_threadID(thread_id)==True and find_messageID(message_id)==True:
                 markAsRead(message['id'])
-                print("Already in database")
+                print("Already made a ticket and it is not a reply")
 
 
     except Exception as error:

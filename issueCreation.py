@@ -6,59 +6,37 @@ from updating import update_issue
 import psycopg2
 from actions import get_issue_from_db
 
-
 load_dotenv()
 API_KEY = os.getenv("GITHUB_TOKEN_KEY")
-
-
-
-
-
-
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
     "postgresql://postgres:postgres@localhost:5432/ticketing_db"
 )
 
+
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
-def save_issue_to_db(thread_id, issue_number):
-
+def save_issue_to_db(thread_id, issue_number, message_id):
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # Notice we use 'tickets_schema.issue_mappings' to target our custom schema
+
     query = """
-        INSERT INTO tickets_schema.issue_mappings (thread_id, issue_number)
-        VALUES (%s, %s)
-        ON CONFLICT (thread_id) 
-        DO UPDATE SET issue_number = EXCLUDED.issue_number;
+        INSERT INTO tickets_schema.issue_mappings (message_id, thread_id, issue_number)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (message_id) 
+        DO NOTHING;
     """
     
-    cur.execute(query, (thread_id, issue_number))
+    cur.execute(query, (message_id, thread_id, issue_number))
     conn.commit()
-    
     cur.close()
     conn.close()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-def create_github_issue(short_subject, short_body, is_reply, thread_id):
+def create_github_issue(short_subject, short_body, is_reply, thread_id, message_id):
     url = f"https://api.github.com/repos/anant15062007/Tickets/issues"
     
     headers = {
@@ -71,38 +49,11 @@ def create_github_issue(short_subject, short_body, is_reply, thread_id):
         "body": short_body
     }
 
-    ### Database functions
-    # DB_FILE = "database.json"
-
-    # def save_issue_to_db(thread_id, issue_number):
-    #     data = {}
-
-    #     if os.path.exists(DB_FILE):
-    #         with open(DB_FILE, 'r') as file:
-    #             try:
-    #                 data = json.load(file)
-    #             except json.JSONDecodeError:
-    #                 data = {}
-
-    #     data[thread_id] = issue_number
-
-    #     with open(DB_FILE, 'w') as file:
-    #         json.dump(data, file, indent=4)
-
-    # def get_issue_from_db(thread_id):
-    #     if not os.path.exists(DB_FILE):
-    #         return None
-    #     with open(DB_FILE, 'r') as file:
-    #         try:
-    #             data = json.load(file)
-    #             return data.get(thread_id)
-    #         except json.JSONDecodeError:
-    #             return None
     
     if is_reply:
         #print("Have to update issue")
         issue_number = get_issue_from_db(thread_id)
-        #print(short_body)
+        print(short_body)
         update_issue(issue_number, short_body)
     else:
         response = requests.post(url, headers=headers, json=data)
@@ -111,6 +62,6 @@ def create_github_issue(short_subject, short_body, is_reply, thread_id):
             print(f"Successfully created GitHub Issue: {response.json().get('html_url')}")
             #sendMail(response.json().get('html_url'))
             issue_number = response.json().get('number')
-            save_issue_to_db(thread_id, issue_number)
+            save_issue_to_db(thread_id, issue_number, message_id)
         else:
             print(f"Failed to create issue: {response.status_code}, {response.text}")
