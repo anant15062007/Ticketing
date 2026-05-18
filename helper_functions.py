@@ -52,7 +52,7 @@ Use the following format:
     ticket_json = json.loads(raw_response)
     final_subject = ticket_json["short_subject"]
     final_body = ticket_json["short_body"]
-    print(final_body)
+    #print(final_body)
     create_github_issue(final_subject, final_body, is_reply, thread_id)
     return
 

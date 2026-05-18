@@ -21,7 +21,7 @@ def guardRail(subject, body, is_reply, thread_id, config_path='guardrail.json'):
         callback = getattr(current_module, action_name)
         processed_subject = callback(processed_subject)
         processed_body = callback(processed_body)
-        print(processed_body)
+        #print(processed_body)
     #print(processed_text)
 
     ### Check if the mail is a reply

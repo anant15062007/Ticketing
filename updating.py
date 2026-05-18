@@ -24,7 +24,7 @@ def update_issue(issue_number, body):
     response = requests.patch(url, headers=headers, json=data)
     
     if response.status_code == 200:
-        print(body)
+        #print(body)
         print(f"Successfully updated Issue #{issue_number}")
     else:
         print(f"Failed to update: {response.status_code}, {response.text}")
