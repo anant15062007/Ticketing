@@ -1,11 +1,14 @@
 import requests
 import os
 from dotenv import load_dotenv
+from actions import get_issue_from_db
 
 load_dotenv()
 API_KEY = os.getenv("GITHUB_TOKEN_KEY")
 
-def update_issue(issue_number, body):
+def update_issue(subject, body, thread_id):
+    issue_number = get_issue_from_db(thread_id)
+
     url = f"https://api.github.com/repos/anant15062007/Tickets/issues/{issue_number}"
     
     headers = {
@@ -18,7 +21,7 @@ def update_issue(issue_number, body):
         print("Failed to fetch original issue")
         return
     old_body = get_response.json().get("body", " ")
-    combined_body = f"{old_body}\n\n---\n**Update:**\n{body}"
+    combined_body = f"{old_body}\n\n---\n**Summary:-**\n{subject}\n{body}"
 
     data = {"body": combined_body}
     response = requests.patch(url, headers=headers, json=data)

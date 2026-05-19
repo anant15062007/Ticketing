@@ -3,6 +3,7 @@ import json
 from helper_functions import response
 import sys
 import preprocessing_callback
+from issueCreation import create_github_issue
 
 current_module = sys.modules["preprocessing_callback"]
 
@@ -20,9 +21,9 @@ def guardRail(subject, body, is_reply, thread_id, message_id, config_path='guard
         callback = getattr(current_module, action_name)
         processed_subject = callback(processed_subject)
         processed_body = callback(processed_body)
-    print(processed_body)
+    #print(processed_body)
     #print(processed_text)
 
-    ### Check if the mail is a reply
-
-    response(processed_subject, processed_body, is_reply, thread_id, message_id)
+    ### Have to create issue with the original(processed) mail in it.
+    create_github_issue(processed_subject, processed_body, is_reply, thread_id, message_id)
+    response(processed_subject, processed_body, is_reply, thread_id)

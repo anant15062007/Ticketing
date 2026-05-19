@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from updating import update_issue
 import psycopg2
 from actions import get_issue_from_db
+from comment import addComment
 
 load_dotenv()
 API_KEY = os.getenv("GITHUB_TOKEN_KEY")
@@ -54,7 +55,7 @@ def create_github_issue(short_subject, short_body, is_reply, thread_id, message_
         #print("Have to update issue")
         issue_number = get_issue_from_db(thread_id)
         print(short_body)
-        update_issue(issue_number, short_body)
+        addComment(issue_number, short_subject, short_body)
     else:
         response = requests.post(url, headers=headers, json=data)
         

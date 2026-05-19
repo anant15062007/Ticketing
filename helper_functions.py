@@ -2,7 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from groq import Groq
-from issueCreation import create_github_issue
+from updating import update_issue
 
 load_dotenv()
 API_KEY = os.getenv("GROQ_API_KEY")
@@ -11,7 +11,10 @@ client = Groq(
     api_key=os.environ.get(API_KEY),
 )
 
-def response(subject, body, is_reply, thread_id, message_id):
+def response(subject, body, isReply, thread_id):
+    if isReply:
+        return
+    
     prompt = f"""Act as an efficient office assistant. Your task is to summarize incoming emails into a concise ticketing format.
 
 ### INSTRUCTIONS:
@@ -51,7 +54,7 @@ Use the following format:
     final_subject = ticket_json["short_subject"]
     final_body = ticket_json["short_body"]
     print(final_body)
-    create_github_issue(final_subject, final_body, is_reply, thread_id, message_id)
+    update_issue(final_subject, final_body, thread_id)
     return
 
 
