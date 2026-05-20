@@ -1,14 +1,20 @@
 import psycopg2
 import os
 import base64
+import requests
+import time
 from email.message import EmailMessage
 from googleapiclient.errors import HttpError
 import re
+from dotenv import load_dotenv
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
     "postgresql://postgres:postgres@localhost:5432/ticketing_db"
 )
+
+load_dotenv()
+API_KEY = os.getenv("GITHUB_TOKEN_KEY")
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -136,3 +142,110 @@ def cleanup(body):
             clean_body = clean_body.split(marker)[0]
 
     return clean_body.strip()
+
+def is_github_comment_processed(comment_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT EXISTS(SELECT 1 FROM tickets_schema.processed_comments WHERE comment_id = %s);", (comment_id,))
+    exists = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return exists
+
+def get_routing_info_by_issue(issue_number):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    query = """
+        SELECT thread_id, message_id, sender_email 
+        FROM tickets_schema.issue_mappings 
+        WHERE issue_number = %s 
+        ORDER BY created_at DESC LIMIT 1;
+    """
+    cur.execute(query, (issue_number,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if result:
+        return {
+            "thread_id": result[0],
+            "message_id": result[1],
+            "sender_email": result[2]
+        }
+    return None
+
+def log_processed_github_comment(comment_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO tickets_schema.processed_comments (comment_id) VALUES (%s) ON CONFLICT DO NOTHING;", (comment_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def checkGithubForComment(service):
+    url = f"https://api.github.com/repos/anant15062007/Tickets/issues/comments"
+    
+    headers = {
+        "Authorization": f"token {API_KEY}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    params = {
+        "sort": "created",
+        "direction": "desc",
+        "per_page": 20
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code != 200:
+            print(f"Failed to fetch comments from GitHub. Status Code: {response.status_code}")
+            return
+
+        comments = response.json()
+
+        for comment in comments:
+            comment_id = comment["id"]
+            comment_body = comment["body"]
+            
+            if "----This is an automated comment----" in comment_body:
+                continue
+                
+            if is_github_comment_processed(comment_id):
+                continue
+                
+            issue_num = int(comment["issue_url"].split("/")[-1])
+            
+            routing_info = get_routing_info_by_issue(issue_num)
+            
+            if routing_info:
+                target_thread_id = routing_info["thread_id"]
+                last_msg_id = routing_info["message_id"]
+                customer_email = routing_info["sender_email"]
+                
+                print(f"🎯 Found new developer comment ({comment_id}) on Issue #{issue_num}!")
+                print(f"🔄 Routing message to customer: {customer_email}")
+                
+                # 5. Build fake/minimal mock headers to satisfy your existing sendMail structure
+                # This saves you from having to hit the slow Gmail API GET endpoint!
+                mock_headers = [
+                    {"name": "From", "value": customer_email},
+                    {"name": "Message-ID", "value": last_msg_id},
+                    {"name": "Subject", "value": f"Ticket #{issue_num} Update"}
+                ]
+                
+                try:
+                    sendMail(service, target_thread_id, mock_headers, True)
+                    
+                    log_processed_github_comment(comment_id)
+                    print(f"✅ Successfully emailed customer and logged Comment ID {comment_id}.\n")
+                    
+                except HttpError as gmail_err:
+                    print(f"Gmail API transmission failed for Comment {comment_id}: {gmail_err}")
+                except Exception as send_err:
+                    print(f"Error handling email transmission execution: {send_err}")
+            else:
+                print(f"⚠️ Comment found on Issue #{issue_num}, but it doesn't match any thread in our DB.")
+                
+    except Exception as e:
+        print(f"An error occurred while running the GitHub comment monitor: {e}")

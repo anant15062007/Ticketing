@@ -12,7 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from processing import guardRail
 from actions import get_issue_from_db, find_threadID, find_messageID
-from actions import sendMail
+from actions import sendMail, checkGithubForComment
 
 
 # Use modify scope to allow marking as read without full account deletion powers
@@ -56,10 +56,12 @@ def get_unread_emails():
 
         results = service.users().messages().list(userId='me', q='is:unread').execute()
         messages = results.get('messages', [])
+        
+        checkGithubForComment(service)
 
         if not messages:
             print('No unread messages found.')
-            return
+            return            
 
         print(f'Found {len(messages)} unread messages:')
 
@@ -81,6 +83,13 @@ def get_unread_emails():
             subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'No Subject')
             body = get_full_body(msg.get('payload', {}))
 
+            sender_header = next((header['value'] for header in headers if header['name'] == 'From'), None)
+            sender_email = "me"
+            if sender_header:
+                email_match = re.findall(r'<([^>]+)>', sender_header)
+                sender_email = email_match[0] if email_match else sender_header
+
+
             if find_threadID(thread_id)==False:
                 print("Therad ID:- ", thread_id)
                 #print(message)
@@ -89,7 +98,7 @@ def get_unread_emails():
 
                 print(body)
                 
-                guardRail(subject, body, False, thread_id, message['id'])
+                guardRail(subject, body, False, thread_id, message['id'], sender_email)
 
                 processed_threads.add(thread_id)
                 markAsRead(message['id'])
@@ -97,7 +106,7 @@ def get_unread_emails():
 
             elif find_threadID(thread_id)==True and find_messageID(message_id)==False:
                 print("It is a reply")
-                guardRail(subject, body, True, thread_id, message['id'])
+                guardRail(subject, body, True, thread_id, message['id'], sender_email)
                 markAsRead(message['id'])
                 sendMail(service, thread_id, headers, True)
                 

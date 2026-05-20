@@ -8,7 +8,7 @@ from issueCreation import create_github_issue
 current_module = sys.modules["preprocessing_callback"]
 
 
-def guardRail(subject, body, is_reply, thread_id, message_id, config_path='guardrail.json'):
+def guardRail(subject, body, is_reply, thread_id, message_id, sender_email, config_path='guardrail.json'):
 
     with open(config_path, 'r') as f:
         config = json.load(f)
@@ -24,6 +24,5 @@ def guardRail(subject, body, is_reply, thread_id, message_id, config_path='guard
     #print(processed_body)
     #print(processed_text)
 
-    ### Have to create issue with the original(processed) mail in it.
-    create_github_issue(processed_subject, processed_body, is_reply, thread_id, message_id)
+    create_github_issue(processed_subject, processed_body, is_reply, thread_id, message_id, sender_email)
     response(processed_subject, processed_body, is_reply, thread_id)

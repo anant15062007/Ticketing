@@ -17,8 +17,10 @@ def addComment(issue_number, subject, body):
         "Accept": "application/vnd.github.v3+json"
     }
 
+    bot_signature = "\n----This is an automated comment----\n"
+    
     payload = {
-        "body": f"{body}"
+        "body": f"{body}{bot_signature}"
     }
 
     try:
