@@ -184,6 +184,7 @@ def log_processed_github_comment(comment_id):
     conn.close()
 
 def checkGithubForComment(service):
+
     url = f"https://api.github.com/repos/anant15062007/Tickets/issues/comments"
     
     headers = {
@@ -249,3 +250,30 @@ def checkGithubForComment(service):
                 
     except Exception as e:
         print(f"An error occurred while running the GitHub comment monitor: {e}")
+
+def close_github_issue(issue_number):
+    url = f"https://api.github.com/repos/anant15062007/Tickets/issues/{issue_number}"
+    
+    headers = {
+        "Authorization": f"token {API_KEY}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    payload = {
+        "state": "closed",
+        "state_reason": "completed"
+    }
+    
+    try:
+        response = requests.patch(url, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            print(f"🔒 Successfully CLOSED GitHub Issue #{issue_number}!")
+            return True
+        else:
+            print(f"❌ Failed to close issue. Status Code: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"Error connecting to GitHub while closing issue: {e}")
+        return False
+    

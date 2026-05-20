@@ -21,3 +21,9 @@ def otp_check(text):
     if otp_found:
         text = re.sub(r'\b\d{4,8}\b', "[Contained OTP]", text)
     return text
+
+def check_for_close_keyword(email_text):
+    close_pattern = r"\b(?<!do not\s)(?<!don't\s)(close|closed|resolved|solved)\b"
+    if re.search(close_pattern, email_text, re.IGNORECASE):
+        return True
+    return False
