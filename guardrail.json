@@ -1,0 +1,19 @@
+{
+    "guardrails": [
+        {
+            "name": "E-Mail",
+            "description": "Checks for any Email",
+            "callback_action": "email_check"
+        },
+        {
+            "name": "PhoneNo",
+            "description": "Checks for any phone number",
+            "callback_action": "phone_check"
+        },
+        {
+            "name": "OTP",
+            "description": "Checks for OTP",
+            "callback_action": "otp_check"
+        }
+    ]
+}
