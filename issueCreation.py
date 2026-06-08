@@ -9,9 +9,10 @@ from comment import addComment
 
 load_dotenv()
 API_KEY = os.getenv("GITHUB_TOKEN_KEY")
+SYSTEM_CHOICE = os.getenv("TICKETING_SYSTEM", "local").lower()
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
+    "DATABASE_URL",
     "postgresql://postgres:postgres@localhost:5432/ticketing_db"
 )
 
@@ -58,32 +59,52 @@ def changeMessageID(thread_id, message_id):
         conn.close()
 
 def create_github_issue(short_subject, short_body, is_reply, thread_id, message_id, sender_email):
-    url = f"https://api.github.com/repos/anant15062007/Tickets/issues"
-    
-    headers = {
-        "Authorization": f"token {API_KEY}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-    
-    data = {
-        "title": short_subject,
-        "body": short_body
-    }
-
-    
-    if is_reply:
-        #print("Have to update issue")
-        issue_number = get_issue_from_db(thread_id)
-        print(short_body)
-        addComment(issue_number, short_subject, short_body)
-        changeMessageID(thread_id, message_id)
-    else:
-        response = requests.post(url, headers=headers, json=data)
+    if SYSTEM_CHOICE == "github":
+        url = f"https://api.github.com/repos/anant15062007/Tickets/issues"
         
-        if response.status_code == 201:
-            print(f"Successfully created GitHub Issue: {response.json().get('html_url')}")
-            #sendMail(response.json().get('html_url'))
-            issue_number = response.json().get('number')
-            save_issue_to_db(thread_id, issue_number, message_id, sender_email)
+        headers = {
+            "Authorization": f"token {API_KEY}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        data = {
+            "title": short_subject,
+            "body": short_body
+        }
+
+        
+        if is_reply:
+            #print("Have to update issue")
+            issue_number = get_issue_from_db(thread_id)
+            print(short_body)
+            addComment(issue_number, short_subject, short_body)
+            changeMessageID(thread_id, message_id)
         else:
-            print(f"Failed to create issue: {response.status_code}, {response.text}")
+            response = requests.post(url, headers=headers, json=data)
+            
+            if response.status_code == 201:
+                print(f"Successfully created GitHub Issue: {response.json().get('html_url')}")
+                #sendMail(response.json().get('html_url'))
+                issue_number = response.json().get('number')
+                save_issue_to_db(thread_id, issue_number, message_id, sender_email)
+            else:
+                print(f"Failed to create issue: {response.status_code}, {response.text}")
+
+    else:
+        url = f"http://127.0.0.1:8000/api/tickets?email={sender_email}"
+        payload = {
+            "title": short_subject, 
+            "description": short_body
+        }
+        
+        try:
+            response = requests.post(url, json=payload)
+            if response.status_code == 201:
+                print("Successfully committed incident directly to your website database via FastAPI.")
+                return response.json()
+            else:
+                print(f"FastAPI Error: {response.status_code} - {response.text}")
+        except requests.exceptions.ConnectionError:
+            print("Connection Error: Is your website's FastAPI backend server running on port 8000?")
+            
+    return None

@@ -91,7 +91,7 @@ Your ticket has been created at https://github.com/anant15062007/Tickets/issues/
                 message.set_content(f"""This is an automated confirmation mail.
 Your ticket has been updated at https://github.com/anant15062007/Tickets/issues/{issueNo}""")
         else:
-            message.set_content("An Error Occurred during ticket processing.")
+            message.set_content("Your ticket has been created at http://localhost:5173/.")
 
         message["To"] = sender_email
         message["From"] = "jainanant469@gmail.com"
