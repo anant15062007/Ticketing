@@ -13,6 +13,7 @@ from googleapiclient.discovery import build
 from processing import guardRail
 from actions import get_issue_from_db, find_threadID, find_messageID
 from actions import sendMail, checkGithubForComment
+from check_update import process_unsent_emails
 
 
 # Use modify scope to allow marking as read without full account deletion powers
@@ -58,6 +59,8 @@ def get_unread_emails():
         messages = results.get('messages', [])
         
         checkGithubForComment(service)
+        
+        process_unsent_emails()
 
         if not messages:
             print('No unread messages found.')

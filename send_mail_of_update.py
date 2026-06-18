@@ -24,7 +24,7 @@ if not creds or not creds.valid: # Added 'not creds.valid' as a safety check
 
 service = build('gmail', 'v1', credentials=creds)
 
-def sendMail(mailId, ticketId):
+def sendUpdateMail(mailId, ticketId):
     try:
         message = EmailMessage()
         
