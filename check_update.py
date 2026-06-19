@@ -8,7 +8,12 @@ from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ticketing_db")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,        # Increase the base parking spaces
+    max_overflow=30,     # Increase the waiting line
+    pool_timeout=60      # Give tasks 60 seconds to wait in line before crashing
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
@@ -52,8 +57,10 @@ def process_unsent_emails():
         if author.role == 'Owner' or author.role == 'Admin':
             sendUpdateMail(mailId, reply.ticket_id)
             
-        elif author.role == 'user':
-            print("👤 Author is a User. Handling user logic...")
+        elif author.role == 'User':
+            mailId = parent_ticket.assigned_to
+            sendUpdateMail(mailId, reply.ticket_id)
+
             # Do user-specific logic here (e.g., notify admins)
             
         else:
