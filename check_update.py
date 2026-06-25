@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from models import TicketReplyModel, UserRoleModel, TicketModel
-from send_mail_of_update import sendUpdateMail
+from send_mail_of_update import sendUpdateMail, send_agent_invite
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -27,45 +27,72 @@ def get_db():
 
 def process_unsent_emails():
     """
-    Scans the database for unsent emails and determines the action 
-    based on the author's role.
+    Scans the database for unsent ticket replies and unsent agent invites,
+    processing each and dispatching the appropriate emails.
     """
 
     db = SessionLocal()
 
-    # 1. Fetch all replies where email_sent is explicitly False
-    unsent_replies = db.query(TicketReplyModel).filter(TicketReplyModel.email_sent == False).all()
+    try:
+        # ==========================================
+        # PART 1: PROCESS UNSENT TICKET REPLIES
+        # ==========================================
+        unsent_replies = db.query(TicketReplyModel).filter(TicketReplyModel.email_sent == False).all()
 
-    if not unsent_replies:
-        print("All emails have been sent. Nothing to process.")
-        return
-
-    for reply in unsent_replies:
-        print(f"Checking Ticket ID #{reply.ticket_id} from {reply.author_email}...")
-
-        # 2. Look up the author in the users table to determine their role
-        author = db.query(UserRoleModel).filter(UserRoleModel.email == reply.author_email).first()
-        parent_ticket = db.query(TicketModel).filter(TicketModel.id == reply.ticket_id).first()
-        mailId = parent_ticket.creator_email
-
-        # Safety check in case the user was deleted
-        if not author:
-            print(f"⚠️ Could not find role for {reply.author_email}. Skipping.")
-            continue
-
-        # 3. Route the logic based on the author's role
-        if author.role == 'Owner' or author.role == 'Admin':
-            sendUpdateMail(mailId, reply.ticket_id)
-            
-        elif author.role == 'User':
-            mailId = parent_ticket.assigned_to
-            sendUpdateMail(mailId, reply.ticket_id)
-
-            # Do user-specific logic here (e.g., notify admins)
-            
+        if not unsent_replies:
+            print("No unsent replies to process.")
         else:
-            print(f"❓ Unknown role '{author.role}' for {reply.author_email}")
+            for reply in unsent_replies:
+                print(f"Checking Ticket ID #{reply.ticket_id} from {reply.author_email}...")
 
-        # 4. Once processed, mark it as sent so it isn't processed again
-        reply.email_sent = True
+                # Look up the author in the users table to determine their role
+                author = db.query(UserRoleModel).filter(UserRoleModel.email == reply.author_email).first()
+                parent_ticket = db.query(TicketModel).filter(TicketModel.id == reply.ticket_id).first()
+                
+                # Safety check in case the user or ticket was deleted
+                if not author or not parent_ticket:
+                    print(f"⚠️ Missing author or ticket for reply ID {reply.id}. Skipping.")
+                    continue
+
+                # Route the logic based on the author's role
+                if author.role == 'Owner' or author.role == 'Admin':
+                    sendUpdateMail(parent_ticket.creator_email, reply.ticket_id)
+                    
+                elif author.role == 'User':
+                    sendUpdateMail(parent_ticket.assigned_to, reply.ticket_id)
+                    
+                else:
+                    print(f"❓ Unknown role '{author.role}' for {reply.author_email}")
+
+                # Once processed, mark it as sent so it isn't processed again
+                reply.email_sent = True
+
+
+        # ==========================================
+        # PART 2: PROCESS NEW ACCOUNTS (AGENTS & USERS)
+        # ==========================================
+        # Fetch ALL accounts where 'created' is False
+        new_accounts = db.query(UserRoleModel).filter(UserRoleModel.created == False).all()
+
+        if not new_accounts:
+            print("No new accounts to process.")
+        else:
+            for account in new_accounts:
+                
+                # Check the role inside the loop
+                if account.role == 'Admin' or account.role == 'Owner':
+                    print(f"Sending invite to new agent: {account.email}...")
+                    
+                    send_agent_invite(account.email, account.hashed_password) 
+                    account.created = True
+                    
+                elif account.role == 'User':
+                    print(f"Silently verifying standard user: {account.email}...")
+                    account.created = True
+                else:
+                    print(f"❓ Unknown role '{account.role}' for {account.email}. Skipping.")
+
         db.commit()
+
+    finally:
+        db.close()

@@ -54,3 +54,34 @@ def sendUpdateMail(mailId, ticketId):
         send_message = None
         
     return send_message
+
+def send_agent_invite(mailId, password):
+    try:
+        message = EmailMessage()
+        
+        message.set_content(f"Your Agent ID is {mailId} and your password is {password}")
+
+        message["To"] = mailId
+        message["From"] = "jainanant469@gmail.com"
+        message["Subject"] = "Credentials"
+
+        encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+        
+        create_message = {
+            'raw': encoded_message
+        }
+        
+        send_message = (
+            service.users()
+            .messages()
+            .send(userId="me", body=create_message)
+            .execute()
+        )
+        print(f'{mailId} Agent Added')
+        
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        send_message = None
+        
+    return send_message
